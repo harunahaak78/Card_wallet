@@ -6,6 +6,8 @@ import AddCardScreen from '../screens/AddCardScreen';
 import ScanCardScreen from '../screens/ScanCardScreen';
 import CardPreviewScreen from '../screens/CardPreviewScreen';
 import CardViewerScreen from '../screens/CardViewerScreen';
+import SetupPinScreen from '../screens/SetupPinScreen';
+
 
 export type RootStackParamList = {
   Home: undefined;
@@ -24,6 +26,8 @@ export type RootStackParamList = {
     frontImage: string;
     backImage: string;
   };
+  SetupPin: undefined;
+ 
 
 };
 
@@ -61,6 +65,12 @@ export default function AppNavigator() {
         name="CardViewer"
         component={CardViewerScreen}
       />
+
+      <Stack.Screen
+        name="SetupPin"
+        component={SetupPinScreen}
+      />
+      
     </Stack.Navigator>
   );
 }

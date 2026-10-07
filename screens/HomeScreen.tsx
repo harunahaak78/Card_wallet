@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   SafeAreaView,
   View,
@@ -8,6 +8,8 @@ import {
   StatusBar,
   ScrollView,
   Image,
+  FlatList,
+  Dimensions,
 } from 'react-native';
 
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -16,6 +18,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { RootStackParamList } from '../navigation/AppNavigator';
 import Card3D from '../components/Card3D';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
+
 
 type HomeScreenNavigationProp =
   NativeStackNavigationProp<RootStackParamList, 'Home'>;
@@ -33,16 +38,33 @@ export default function HomeScreen() {
     useNavigation<HomeScreenNavigationProp>();
 
   const [cards, setCards] = useState<DigitalCard[]>([]);
+  const [activeCardIndex, setActiveCardIndex] = useState(0);
+
+  
 
   const loadCards = async () => {
     try {
       const storedCards =
         await AsyncStorage.getItem('digital_cards');
-
+  
       if (storedCards) {
-        setCards(JSON.parse(storedCards));
+        const parsedCards: DigitalCard[] =
+          JSON.parse(storedCards);
+  
+        setCards(parsedCards);
+  
+        // Make sure the selected index is still valid
+        setActiveCardIndex((currentIndex) =>
+          parsedCards.length === 0
+            ? 0
+            : Math.min(
+                currentIndex,
+                parsedCards.length - 1
+              )
+        );
       } else {
         setCards([]);
+        setActiveCardIndex(0);
       }
     } catch (error) {
       console.error('Load cards error:', error);
@@ -115,43 +137,102 @@ export default function HomeScreen() {
             ›
           </Text>
         </TouchableOpacity>
-        {/* 3D CARD SHOWCASE */}
+        <TouchableOpacity
+          style={{
+            marginTop: 12,
+            height: 50,
+            borderRadius: 14,
+            backgroundColor: '#E5E7EB',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+          onPress={() => navigation.navigate('SetupPin')}
+        >
+          <Text
+            style={{
+              color: '#111827',
+              fontSize: 15,
+              fontWeight: '700',
+            }}
+          >
+            🔐 Set Up PIN
+          </Text>
+        </TouchableOpacity>
+       {/* 3D CARD SHOWCASE */}
 
-        {cards.length > 0 && (
-        <View style={styles.showcaseSection}>
-            <View style={styles.showcaseHeader}>
-            <View>
-                <Text style={styles.showcaseTitle}>
-                3D Card Showcase
-                </Text>
+          {cards.length > 0 && (
+            <View style={styles.showcaseSection}>
+              <View style={styles.showcaseHeader}>
+                <View>
+                  <Text style={styles.showcaseTitle}>
+                    3D Card Showcase
+                  </Text>
 
-                <Text style={styles.showcaseSubtitle}>
-                Tap your card to flip it
-                </Text>
+                  <Text style={styles.showcaseSubtitle}>
+                    Swipe to view your cards
+                  </Text>
+                </View>
+
+                <View style={styles.showcaseBadge}>
+                  <Text style={styles.showcaseBadgeText}>
+                    3D
+                  </Text>
+                </View>
+              </View>
+
+              <FlatList
+                data={cards}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(item) => item.id}
+                decelerationRate="fast"
+                snapToAlignment="center"
+                onMomentumScrollEnd={(event) => {
+                  const index = Math.round(
+                    event.nativeEvent.contentOffset.x /
+                      event.nativeEvent.layoutMeasurement.width
+                  );
+
+                  setActiveCardIndex(index);
+                }}
+                renderItem={({ item }) => (
+                  <View style={styles.carouselPage}>
+                    <Card3D
+                      cardType={item.cardType}
+                      frontImage={item.frontImage}
+                      backImage={item.backImage}
+                      onPress={() =>
+                        navigation.navigate('CardViewer', {
+                          id: item.id,
+                          cardType: item.cardType,
+                          frontImage: item.frontImage,
+                          backImage: item.backImage,
+                        })
+                      }
+                    />
+                  </View>
+                )}
+              />
+
+              {/* Pagination */}
+
+              {cards.length > 1 && (
+                <View style={styles.pagination}>
+                  {cards.map((card, index) => (
+                    <View
+                      key={card.id}
+                      style={[
+                        styles.paginationDot,
+                        index === activeCardIndex &&
+                          styles.paginationDotActive,
+                      ]}
+                    />
+                  ))}
+                </View>
+              )}
             </View>
-
-            <View style={styles.showcaseBadge}>
-                <Text style={styles.showcaseBadgeText}>
-                3D
-                </Text>
-            </View>
-            </View>
-
-            <Card3D
-            cardType={cards[0].cardType}
-            frontImage={cards[0].frontImage}
-            backImage={cards[0].backImage}
-            onPress={() =>
-                navigation.navigate('CardViewer', {
-                id: cards[0].id,
-                cardType: cards[0].cardType,
-                frontImage: cards[0].frontImage,
-                backImage: cards[0].backImage,
-                })
-            }
-            />
-        </View>
-        )}
+          )}
 
         {/* Card Section */}
 
@@ -554,4 +635,28 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.5,
   },
+  carouselPage: {
+    width: SCREEN_WIDTH - 40,
+    alignItems: 'center',
+  },
+  pagination: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 14,
+    gap: 6,
+  },
+  
+  paginationDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#D1D5DB',
+  },
+  
+  paginationDotActive: {
+    width: 20,
+    backgroundColor: '#111827',
+  },
+
 });
